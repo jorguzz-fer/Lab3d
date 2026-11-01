@@ -135,6 +135,10 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
 .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
 .btn:hover{border-color:var(--ink2)}
 
+.srcimg{position:absolute;left:24px;top:24px;width:300px;margin:0;border:1px solid var(--line2);border-radius:8px;overflow:hidden;background:var(--surface)}
+.srcimg img{display:block;width:100%}
+.srcimg figcaption{font-family:var(--f-mono);font-size:12px;color:var(--muted);padding:6px 10px}
+
 /* comparação */
 .cmp{padding:56px 64px 40px 48px;display:flex;flex-direction:column;gap:18px;height:100%;justify-content:center}
 table.grid{border-collapse:collapse;width:100%;font-size:16px}
@@ -222,21 +226,27 @@ table.grid td{color:var(--ink2)}
   <div class="copy">
     <div class="eyebrow">Modelo 2 · gerado por IA</div>
     <h2>Da ilustração ao volume</h2>
-    <p class="lead">A IA gerou uma <strong>ilustração</strong> de um bloco de pele fina e depois converteu essa imagem num <strong>modelo 3D</strong> (Tripo H3.1, pela Higgsfield).</p>
-    <p class="note">Em geral, o resultado é uma malha única com textura pintada: boa para girar e mostrar, mas sem partes separadas. Não dá para clicar no folículo nem esconder a derme, e a anatomia precisa ser conferida por quem ensina.</p>
-    <p class="note" id="aiInfo">Arraste o arquivo .glb gerado para a bancada ao lado ou clique em “Abrir arquivo”. Também funciona com qualquer outro GLB.</p>
-    <div class="chips"><button class="chip" id="aiSpin" aria-pressed="true">Girar sozinho</button></div>
+    <p class="lead">A IA desenhou uma <strong>ilustração</strong> de um bloco de pele fina e depois converteu essa imagem num <strong>modelo 3D</strong> (Tripo H3.1, pela Higgsfield). Foram duas tentativas com o mesmo pedido.</p>
+    <div class="chips" role="group" aria-label="Versão do modelo">
+      <button class="chip" id="aiA" aria-pressed="true">Versão A</button>
+      <button class="chip" id="aiB" aria-pressed="false">Versão B</button>
+      <button class="chip" id="aiSrc" aria-pressed="false">Ver ilustração de origem</button>
+      <button class="chip" id="aiSpin" aria-pressed="true">Girar sozinho</button>
+    </div>
+    <p class="note">Repare: o folículo e as glândulas sebáceas estão <strong>pintados na face do corte</strong>, como uma foto colada no bloco. Só o pelo tem volume. É uma malha única, então não dá para clicar nas estruturas, escondê-las nem abrir o corte.</p>
+    <p class="note" id="aiInfo">carregando modelo…</p>
+    <label class="btn" style="align-self:flex-start">Abrir outro GLB<input type="file" id="aiFile" accept=".glb,model/gltf-binary" hidden></label>
   </div>
   <div class="bench">
     <div class="stage3d" id="ai3d"></div>
-    <div class="drop" id="aiDrop">
+    <div class="drop" id="aiDrop" hidden>
       <div>
         <h3>Solte o GLB aqui</h3>
-        <p>O arquivo gerado pela IA fica no seu histórico da Higgsfield. Baixe o .glb e arraste para cá. Ele abre só no seu navegador; nada é enviado.</p>
-        <label class="btn primary">Abrir arquivo<input type="file" id="aiFile" accept=".glb,.gltf,model/gltf-binary" hidden></label>
+        <p>Ele abre só no seu navegador; nada é enviado.</p>
       </div>
     </div>
-    <div class="hint" id="aiHint" hidden>arrastar: girar · rolar: zoom</div>
+    <figure class="srcimg" id="aiSrcFig" hidden><img id="aiSrcImg" alt="Ilustração gerada pela IA que deu origem ao modelo 3D"><figcaption>ilustração de origem (2D)</figcaption></figure>
+    <div class="hint" id="aiHint">arrastar: girar · rolar: zoom<br>duplo clique: vista inicial</div>
   </div>
 </section>
 
@@ -254,8 +264,8 @@ table.grid td{color:var(--ink2)}
         <thead><tr><th>Critério</th><th>Procedural (código)</th><th>Gerado por IA</th></tr></thead>
         <tbody>
           <tr><td>Partes separadas</td><td><span class="tag ok">sim</span>12 estruturas nomeadas, clicáveis</td><td><span class="tag crit">não</span>uma malha única</td></tr>
-          <tr><td>Fidelidade anatômica</td><td><span class="tag ok">alta</span>camadas e proporções definidas por quem modela</td><td><span class="tag warn">variável</span>a IA pode inventar ou fundir estruturas</td></tr>
-          <tr><td>Visual</td><td><span class="tag warn">esquemático</span>texturas tipo H&amp;E geradas por código</td><td><span class="tag ok">rico</span>em geral, textura “pintada” com aspecto de maquete</td></tr>
+          <tr><td>Fidelidade anatômica</td><td><span class="tag ok">alta</span>camadas e proporções definidas por quem modela</td><td><span class="tag warn">superficial</span>folículo e glândulas só pintados na face; a IA pode inventar detalhes</td></tr>
+          <tr><td>Visual</td><td><span class="tag warn">esquemático</span>texturas tipo H&amp;E geradas por código</td><td><span class="tag ok">rico</span>textura pintada, aspecto de maquete de museu</td></tr>
           <tr><td>Ajuste</td><td><span class="tag ok">fácil</span>muda um número e gera de novo</td><td><span class="tag warn">refazer</span>nova imagem, nova geração</td></tr>
           <tr><td>Custo e tempo</td><td>horas de modelagem na primeira vez; depois, segundos</td><td>minutos e poucos créditos por tentativa</td></tr>
           <tr><td>Integração</td><td>three.js, Unity, Blender, AR (GLB e USDZ)</td><td>os mesmos formatos, mas sem interação por parte</td></tr>
@@ -476,29 +486,45 @@ V3.onFrame=()=>{
 };
 DECK.onChange(k=>{if(k==='theme'&&selected)select(selected,false)});
 
-// ---------- modelo IA (arquivo solto pelo apresentador ou models/pele_fina_ia.txt) ----------
+// ---------- modelos da IA (versões A e B) + qualquer GLB solto pelo apresentador ----------
 const AI=makeView(document.getElementById('ai3d'),{slide:3,target:[0,0,0],pos:[0,1,4]});
 AI.ctl.autoRotate=true;AI.ctl.autoRotateSpeed=0.8;
-const drop=document.getElementById('aiDrop');
-function showAI(g,label){
-  AI.scene.clear();AI.scene.add(new THREE.DirectionalLight('#fff',1.5).translateX(2).translateY(4).translateZ(3));
+AI.scene.add(new THREE.DirectionalLight('#fff',1.5).translateX(2).translateY(4).translateZ(3));
+const drop=document.getElementById('aiDrop'),info=document.getElementById('aiInfo');
+const srcFig=document.getElementById('aiSrcFig'),srcImg=document.getElementById('aiSrcImg'),bSrc=document.getElementById('aiSrc');
+const AI_MODELS={A:{file:'models/pele_fina_ia_a.txt',img:'img/ia_a.jpg'},B:{file:'models/pele_fina_ia_b.txt',img:'img/ia_b.jpg'}};
+let aiCurrent=null;
+function showAI(g,label,img){
+  if(aiCurrent)AI.scene.remove(aiCurrent);
   const m=g.scene;const box=new THREE.Box3().setFromObject(m),c=box.getCenter(new THREE.Vector3()),s=box.getSize(new THREE.Vector3()).length();
-  m.position.sub(c);AI.scene.add(m);
-  AI.setHome(new THREE.Vector3(s*.55,s*.35,s*.95),new THREE.Vector3());
-  drop.hidden=true;document.getElementById('aiHint').hidden=false;
+  m.position.sub(c);AI.scene.add(m);aiCurrent=m;
+  // nos modelos gerados, a face com o folículo fica voltada para +x
+  AI.setHome(new THREE.Vector3(s*1.5,s*.55,s*.9),new THREE.Vector3());
   let meshes=0,tris=0;m.traverse(o=>{if(o.isMesh){meshes++;tris+=(o.geometry.index?o.geometry.index.count:o.geometry.attributes.position.count)/3}});
-  document.getElementById('aiInfo').innerHTML=`<b>${label}</b>: ${meshes} malha${meshes>1?'s':''}, ${Math.round(tris/1000)} mil triângulos.`;
+  info.innerHTML=`<b>${label}</b>: ${meshes} malha${meshes>1?'s':''}, ${Math.round(tris/1000)} mil triângulos.`;
+  bSrc.hidden=!img;if(img)srcImg.src=img;else{srcFig.hidden=true;bSrc.setAttribute('aria-pressed','false')}
 }
-async function openFile(f){const buf=await f.arrayBuffer();showAI(await new GLTFLoader().parseAsync(buf,''),f.name)}
+const cache={};
+async function pick(k){
+  for(const x of ['A','B'])document.getElementById('ai'+x).setAttribute('aria-pressed',x===k);
+  info.textContent='carregando modelo…';
+  try{cache[k]=cache[k]||await loadB64(AI_MODELS[k].file);showAI(cache[k],'Versão '+k,AI_MODELS[k].img)}
+  catch(e){info.textContent='Modelo não encontrado. Solte um .glb na bancada.';drop.hidden=false}
+}
+document.getElementById('aiA').onclick=()=>pick('A');document.getElementById('aiB').onclick=()=>pick('B');
+bSrc.onclick=()=>{const on=srcFig.hidden;srcFig.hidden=!on;bSrc.setAttribute('aria-pressed',on)};
+async function openFile(f){
+  for(const x of ['A','B'])document.getElementById('ai'+x).setAttribute('aria-pressed','false');
+  showAI(await new GLTFLoader().parseAsync(await f.arrayBuffer(),''),f.name,null);drop.hidden=true}
 document.getElementById('aiFile').onchange=e=>e.target.files[0]&&openFile(e.target.files[0]);
 const bench=drop.parentElement;
-bench.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('over')});
-bench.addEventListener('dragleave',()=>drop.classList.remove('over'));
+bench.addEventListener('dragover',e=>{e.preventDefault();drop.hidden=false;drop.classList.add('over')});
+bench.addEventListener('dragleave',e=>{if(!bench.contains(e.relatedTarget)){drop.classList.remove('over');if(aiCurrent)drop.hidden=true}});
 bench.addEventListener('drop',e=>{e.preventDefault();drop.classList.remove('over');const f=e.dataTransfer.files[0];f&&openFile(f)});
 const bSpin=document.getElementById('aiSpin');bSpin.onclick=()=>{AI.ctl.autoRotate=!AI.ctl.autoRotate;bSpin.setAttribute('aria-pressed',AI.ctl.autoRotate)};
-loadB64('models/pele_fina_ia.txt').then(g=>showAI(g,'Modelo gerado por IA')).catch(()=>{});
+pick('A');
 
-window.__lab={select:name=>select(groups.find(g=>g.label===name),false),groups:()=>groups.map(g=>g.label),V3};
+window.__lab={select:name=>select(groups.find(g=>g.label===name),false),groups:()=>groups.map(g=>g.label),V3,pickAI:pick};
 </script>
 </body>
 </html>

@@ -42,6 +42,10 @@ for (const scheme of ['dark', 'light']) {
     await page.evaluate(() => { __lab.select('Glândulas sebáceas'); const r = document.getElementById('explode'); r.value = 70; r.dispatchEvent(new Event('input')); });
     await wait(2500);
     await page.screenshot({ path: join(OUT, 'dark_s3_explodido.png'), timeout: 120000 });
+    await page.evaluate(() => DECK.go(3)); await page.click('#aiSpin'); await wait(5000);
+    await page.screenshot({ path: join(OUT, 'dark_s4_a.png'), timeout: 120000 });
+    await page.evaluate(() => __lab.pickAI('B')); await wait(5000); await page.click('#aiSrc'); await wait(800);
+    await page.screenshot({ path: join(OUT, 'dark_s4_b_origem.png'), timeout: 120000 });
   }
   await page.close();
 }

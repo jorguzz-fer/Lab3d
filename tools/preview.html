@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><title>Prévia de GLB</title>
+<style>html,body{margin:0;background:#20181b}canvas{display:block}</style>
+<script type="importmap">{"imports":{"three":"/node_modules/three/build/three.module.js","three/addons/":"/node_modules/three/examples/jsm/"}}</script>
+</head><body>
+<script type="module">
+// Renderiza um GLB qualquer (?glb=/caminho) de vários ângulos; usado por tools/preview-glb.mjs
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+const W = 900, H = 900;
+const r = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+r.setSize(W, H); r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 0.85;
+document.body.appendChild(r.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color('#20181b');
+scene.environment = new THREE.PMREMGenerator(r).fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environmentIntensity = 0.5;
+const sun = new THREE.DirectionalLight('#fff', 1.5); sun.position.set(2, 4, 3); scene.add(sun);
+const g = await new GLTFLoader().loadAsync(new URLSearchParams(location.search).get('glb'));
+const m = g.scene, box = new THREE.Box3().setFromObject(m), c = box.getCenter(new THREE.Vector3()), s = box.getSize(new THREE.Vector3()).length();
+m.position.sub(c); scene.add(m);
+const cam = new THREE.PerspectiveCamera(30, 1, s / 100, s * 20);
+window.view = (az, el) => {
+  const d = s * 1.9;
+  cam.position.set(d * Math.cos(el) * Math.sin(az), d * Math.sin(el), d * Math.cos(el) * Math.cos(az)); cam.lookAt(0, 0, 0);
+  r.render(scene, cam); return r.domElement.toDataURL('image/jpeg', 0.85);
+};
+window.READY = true;
+</script></body></html>

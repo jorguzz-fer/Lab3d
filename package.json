@@ -6,7 +6,10 @@
   "scripts": {
     "build:pele": "node tools/export-procedural.mjs",
     "build:pele:previas": "node tools/export-procedural.mjs --previews",
-    "test:pagina": "node tools/test-page.mjs"
+    "test:pagina": "node tools/test-page.mjs",
+    "web:modelos": "node tools/web-models.mjs",
+    "comprimir:glb": "python3 tools/compress_glb.py",
+    "previa:glb": "node tools/preview-glb.mjs"
   },
   "dependencies": {
     "three": "0.169.0"
