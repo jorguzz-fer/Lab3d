@@ -1,0 +1,14 @@
+{
+  "name": "lab3d",
+  "private": true,
+  "type": "module",
+  "description": "Modelos 3D didáticos de histologia (pele fina): versão procedural e versão gerada por IA",
+  "scripts": {
+    "build:pele": "node tools/export-procedural.mjs",
+    "build:pele:previas": "node tools/export-procedural.mjs --previews",
+    "test:pagina": "node tools/test-page.mjs"
+  },
+  "dependencies": {
+    "three": "0.169.0"
+  }
+}

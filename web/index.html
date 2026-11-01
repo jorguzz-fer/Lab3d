@@ -1,0 +1,504 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pele Fina em 3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..900&family=IBM+Plex+Mono:wght@400;500;600&family=Public+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap">
+<style>
+/* Palco 16:9 fixo (1600×900) escalado para a tela; cada slide = coluna de texto + bancada interativa.
+   Paleta inspirada na coloração H&E: eosina (rosa) como destaque, hematoxilina (roxo) como apoio. */
+:root{
+  --bg:#141017; --bg2:#1d1621; --surface:#221a27; --line:#3a2e41; --line2:#76657f;
+  --ink:#f3ecf4; --ink2:#c9bacd; --muted:#9a8a9f;
+  --accent:#d9468f; --accent-ink:#ff8cc0; --accent-soft:rgba(217,70,143,.16);
+  --hema:#9b6ad0; --gold:#e9b44c;
+  --ok:#5cbf8a; --warn:#e9b44c; --crit:#ef5b4c;
+  --f-display:"Archivo","Arial Narrow",system-ui,sans-serif;
+  --f-body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme: light){ :root:not([data-theme="dark"]){
+  --bg:#f1eef2; --bg2:#e7e2ea; --surface:#ffffff; --line:#d6cfd9; --line2:#918595;
+  --ink:#1d1520; --ink2:#4c3f50; --muted:#6c5e70;
+  --accent:#b0286b; --accent-ink:#9c215e; --accent-soft:rgba(176,40,107,.10);
+  --hema:#6a3fa0; --gold:#8a5d08; --ok:#2f8a5b; --warn:#8a5d08; --crit:#c2382b; color-scheme:light } }
+:root[data-theme="light"]{
+  --bg:#f1eef2; --bg2:#e7e2ea; --surface:#ffffff; --line:#d6cfd9; --line2:#918595;
+  --ink:#1d1520; --ink2:#4c3f50; --muted:#6c5e70;
+  --accent:#b0286b; --accent-ink:#9c215e; --accent-soft:rgba(176,40,107,.10);
+  --hema:#6a3fa0; --gold:#8a5d08; --ok:#2f8a5b; --warn:#8a5d08; --crit:#c2382b; color-scheme:light }
+
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);overflow:hidden;padding:0 16px;box-sizing:border-box}
+*{box-sizing:border-box}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
+
+#viewport{position:relative;width:100%;height:100%;overflow:hidden}
+#deck{width:1600px;height:900px;position:absolute;left:50%;top:50%;transform-origin:center center;background:var(--bg);overflow:hidden}
+.slide{position:absolute;inset:0 0 64px 0;display:grid;grid-template-columns:540px 1fr;opacity:0;visibility:hidden;transition:opacity .45s ease,visibility 0s linear .45s}
+.slide.active{opacity:1;visibility:visible;transition:opacity .45s ease}
+.copy{padding:60px 40px 28px 72px;display:flex;flex-direction:column;gap:20px;min-width:0;position:relative;z-index:2}
+.eyebrow{font-family:var(--f-mono);font-size:14px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-ink);display:flex;gap:12px;align-items:center}
+.eyebrow::before{content:"";width:28px;height:2px;background:var(--accent)}
+h1,h2{font-family:var(--f-display);font-stretch:72%;font-weight:800;text-transform:uppercase;line-height:.92;margin:0;text-wrap:balance;letter-spacing:-.005em}
+h2{font-size:58px}
+.lead{font-size:20px;line-height:1.5;color:var(--ink2);margin:0;max-width:44ch}
+.lead strong{color:var(--ink);font-weight:600}
+.note{font-size:15px;line-height:1.5;color:var(--muted);margin:0;max-width:48ch}
+.bench{position:relative;min-width:0;border-left:1px solid var(--line);background:radial-gradient(ellipse at 60% 45%,var(--bg2),var(--bg) 70%)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line2);background:transparent;border-radius:999px;padding:7px 14px;font-size:14px;cursor:pointer;color:var(--ink2);transition:background .2s,color .2s,border-color .2s}
+.chip:hover{border-color:var(--ink2);color:var(--ink)}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.ctrl-row{display:flex;flex-direction:column;gap:6px}
+.ctrl-row label{display:flex;justify-content:space-between;align-items:baseline;font-size:14px;color:var(--ink2)}
+.ctrl-row label output{font-family:var(--f-mono);font-size:16px;color:var(--ink)}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:28px;background:transparent;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:4px;background:linear-gradient(90deg,var(--accent) var(--p,50%),var(--line2) var(--p,50%));border-radius:2px}
+input[type=range]::-moz-range-track{height:4px;background:var(--line2);border-radius:2px}
+input[type=range]::-moz-range-progress{height:4px;background:var(--accent);border-radius:2px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:var(--ink);border:3px solid var(--accent);margin-top:-8px}
+input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--ink);border:3px solid var(--accent)}
+.kbd{font-family:var(--f-mono);font-size:13px;border:1px solid var(--line2);border-bottom-width:2px;border-radius:4px;padding:1px 7px;color:var(--ink2)}
+.credit{font-size:12px;color:var(--muted);line-height:1.5}
+.caption{border-left:2px solid var(--accent);padding-left:16px;font-size:16px;line-height:1.5;color:var(--ink2);min-height:6.4em}
+.caption b{color:var(--ink);display:block;font-family:var(--f-display);font-stretch:80%;text-transform:uppercase;font-size:20px;letter-spacing:.02em;margin-bottom:4px}
+
+/* nav */
+#nav{position:absolute;left:0;right:0;bottom:0;height:64px;display:flex;align-items:center;gap:18px;padding:0 28px 0 72px;border-top:1px solid var(--line);background:var(--bg);z-index:10}
+#nav .title{font-family:var(--f-display);font-stretch:80%;font-weight:700;text-transform:uppercase;font-size:15px;letter-spacing:.06em;color:var(--muted);white-space:nowrap}
+#ticks{display:flex;gap:6px;flex:1;align-items:center}
+#ticks button{flex:1;height:22px;border:0;background:transparent;cursor:pointer;position:relative;padding:0}
+#ticks button::after{content:"";position:absolute;left:0;right:0;top:10px;height:3px;background:var(--line2);border-radius:2px;transition:background .3s}
+#ticks button.done::after{background:var(--ink2)}
+#ticks button.on::after{background:var(--accent)}
+#counter{font-family:var(--f-mono);font-size:14px;color:var(--ink2);min-width:64px;text-align:center}
+.iconbtn{width:40px;height:40px;border-radius:50%;border:1px solid var(--line2);background:transparent;display:grid;place-items:center;cursor:pointer;color:var(--ink2)}
+.iconbtn:hover{color:var(--ink);border-color:var(--ink2)}
+.iconbtn svg{width:18px;height:18px}
+
+/* 3D */
+.stage3d{position:absolute;inset:0}
+.stage3d canvas{display:block;width:100%;height:100%;outline:none;cursor:grab}
+.stage3d canvas:active{cursor:grabbing}
+.hot-layer{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.hot{position:absolute;left:0;top:0;pointer-events:auto;display:flex;align-items:center;gap:8px;cursor:pointer;transition:opacity .2s}
+.hot .dot{width:26px;height:26px;border-radius:50%;background:var(--bg);border:2px solid var(--gold);color:var(--gold);font:600 12px/22px var(--f-mono);text-align:center;box-shadow:0 0 0 4px rgba(0,0,0,.25)}
+.hot .lbl{font-size:14px;background:var(--bg);color:var(--ink);padding:4px 9px;border-radius:4px;border:1px solid var(--line2);white-space:nowrap;opacity:0;transform:translateX(-4px);transition:opacity .2s,transform .2s;pointer-events:none}
+.hot.show .lbl,.hot:hover .lbl{opacity:1;transform:none}
+.quiz-mode .hot:not(.reveal) .lbl{opacity:0!important}
+.hot.sel .dot{background:var(--gold);color:var(--bg)}
+.hot.hidden{opacity:0;pointer-events:none}
+.hint{position:absolute;right:24px;bottom:18px;font-family:var(--f-mono);font-size:13px;color:var(--muted);pointer-events:none;text-align:right;line-height:1.6}
+.loading{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--f-mono);font-size:14px;color:var(--muted);pointer-events:none}
+
+.structs{display:flex;flex-direction:column;border-top:1px solid var(--line);max-height:300px;overflow:auto}
+.structs .row{display:grid;grid-template-columns:34px 1fr 40px;align-items:center;border-bottom:1px solid var(--line)}
+.structs .row>button{border:0;background:transparent;cursor:pointer;color:var(--ink2);font-size:15px;text-align:left;padding:7px 4px}
+.structs .row .pick{display:contents}
+.structs .row:hover,.structs .row.sel{background:var(--accent-soft)}
+.structs .row.sel .nm,.structs .row:hover .nm{color:var(--ink)}
+.structs .n{font-family:var(--f-mono);font-size:12px;color:var(--gold);padding-left:6px}
+.structs .nm{padding:7px 4px;color:var(--ink2);font-size:15px}
+.structs .eye{display:grid;place-items:center;color:var(--muted)}
+.structs .eye svg{width:18px;height:18px}
+.structs .row.off .nm{text-decoration:line-through;color:var(--muted)}
+
+/* capa */
+#s1{grid-template-columns:720px 1fr}
+#s1 .copy{justify-content:center;padding-left:96px;gap:28px}
+#s1 h1{font-size:104px;font-stretch:66%;line-height:.86}
+#s1 h1 span{display:block;color:var(--accent-ink)}
+#s1 .bench{border:0;background:radial-gradient(circle at 45% 50%,var(--accent-soft),transparent 62%)}
+
+/* lâmina */
+.imgv{position:absolute;inset:0;overflow:hidden;cursor:grab;background:#0b080c}
+.imgv img{position:absolute;left:50%;top:50%;width:84%;max-width:none;user-select:none;-webkit-user-drag:none;image-rendering:auto}
+.zoomctl{position:absolute;right:20px;top:20px;display:flex;flex-direction:column;gap:8px}
+.zoomctl .iconbtn{background:rgba(0,0,0,.5);color:#eee;border-color:#555}
+.legend{display:flex;flex-direction:column;gap:10px}
+.legend div{display:grid;grid-template-columns:18px 1fr;gap:10px;font-size:15px;line-height:1.45;color:var(--ink2)}
+.legend i{width:14px;height:14px;border-radius:50%;margin-top:4px}
+.legend b{color:var(--ink);font-weight:600}
+
+/* IA */
+.drop{position:absolute;inset:48px;border:2px dashed var(--line2);border-radius:12px;display:grid;place-items:center;text-align:center;padding:40px;color:var(--ink2);transition:border-color .2s,background .2s}
+.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+.drop h3{font-family:var(--f-display);font-stretch:75%;font-weight:800;text-transform:uppercase;font-size:34px;margin:0 0 12px;color:var(--ink)}
+.drop p{margin:0 auto 18px;max-width:52ch;font-size:16px;line-height:1.5}
+.btn{border:1px solid var(--line2);background:transparent;border-radius:6px;padding:10px 16px;cursor:pointer;font-size:15px;color:var(--ink)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn:hover{border-color:var(--ink2)}
+
+/* comparação */
+.cmp{padding:56px 64px 40px 48px;display:flex;flex-direction:column;gap:18px;height:100%;justify-content:center}
+table.grid{border-collapse:collapse;width:100%;font-size:16px}
+table.grid th,table.grid td{border-bottom:1px solid var(--line);padding:12px 14px;text-align:left;vertical-align:top;line-height:1.45}
+table.grid th{font-family:var(--f-mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:500}
+table.grid td:first-child{color:var(--ink);font-weight:600;width:24%}
+table.grid td{color:var(--ink2)}
+.tag{font-family:var(--f-mono);font-size:12px;padding:2px 8px;border-radius:4px;border:1px solid currentColor;margin-right:6px;white-space:nowrap}
+.tag.ok{color:var(--ok)} .tag.warn{color:var(--warn)} .tag.crit{color:var(--crit)}
+
+/* revisão */
+.quiz{display:grid;grid-template-columns:1fr 1fr;gap:24px;padding:64px 64px 40px 48px;align-content:center;height:100%}
+.q{border:1px solid var(--line);border-radius:8px;padding:24px 26px;display:flex;flex-direction:column;gap:12px;cursor:pointer;background:transparent;text-align:left;color:var(--ink);transition:border-color .25s}
+.q:hover{border-color:var(--line2)}
+.q .qn{font-family:var(--f-mono);font-size:13px;color:var(--accent-ink);letter-spacing:.1em}
+.q .qt{font-size:20px;line-height:1.4;font-weight:600}
+.q .qa{font-size:16px;line-height:1.5;color:var(--ink2);border-top:1px dashed var(--line2);padding-top:12px;filter:blur(7px);opacity:.5;transition:filter .4s,opacity .4s;user-select:none}
+.q.open .qa{filter:none;opacity:1;user-select:auto}
+.q .qh{font-size:13px;color:var(--muted);font-family:var(--f-mono)}
+.q.open .qh{visibility:hidden}
+@media (prefers-reduced-motion: reduce){.slide{transition:none}}
+</style>
+</head>
+<body>
+<div id="viewport">
+<div id="deck" role="application" aria-label="Aula: pele fina em 3D">
+
+<!-- 1 · CAPA -->
+<section class="slide active" id="s1" data-name="Capa">
+  <div class="copy">
+    <div class="eyebrow">Histologia · tegumento</div>
+    <h1>Pele fina <span>em 3D</span></h1>
+    <p class="lead">Da lâmina corada em H&amp;E a um bloco de tecido que você gira, corta e desmonta: epiderme, derme, folículo piloso e glândulas sebáceas.</p>
+    <p class="note">Arraste o bloco para girar. Use <span class="kbd">←</span> <span class="kbd">→</span> ou <span class="kbd">espaço</span> para avançar e <span class="kbd">F</span> para tela cheia.</p>
+  </div>
+  <div class="bench"><div class="stage3d" id="cover3d"></div><div class="loading" id="coverLoading">carregando modelo 3D…</div></div>
+</section>
+
+<!-- 2 · A LÂMINA -->
+<section class="slide" id="s2" data-name="A lâmina">
+  <div class="copy">
+    <div class="eyebrow">Ponto de partida</div>
+    <h2>A lâmina de pele fina</h2>
+    <p class="lead">Corte histológico corado em H&amp;E. Não é uma célula: é um <strong>tecido</strong>, e cada pontinho roxo é o <strong>núcleo</strong> de uma célula.</p>
+    <div class="legend">
+      <div><i style="background:#7b4bb3"></i><span><b>Hematoxilina (roxo):</b> cora estruturas ácidas, como os núcleos. Por isso epiderme, folículo e glândulas, ricos em células, ficam roxos.</span></div>
+      <div><i style="background:#e58ab3"></i><span><b>Eosina (rosa):</b> cora proteínas do citoplasma e o colágeno da derme.</span></div>
+    </div>
+    <p class="note">Uma lâmina é um plano só, sem profundidade. Para ter o 3D, a forma de cada estrutura vem do conhecimento anatômico (modelo procedural) ou de uma IA que imagina o volume (próximos slides).</p>
+  </div>
+  <div class="bench">
+    <div class="imgv" id="imgv"><img src="img/lamina_pele_fina.jpg" alt="Corte histológico de pele fina: derme, pelo, folículo piloso e glândulas sebáceas" draggable="false"></div>
+    <div class="zoomctl">
+      <button class="iconbtn" id="zin" aria-label="Aproximar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></button>
+      <button class="iconbtn" id="zout" aria-label="Afastar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/></svg></button>
+      <button class="iconbtn" id="zreset" aria-label="Enquadrar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+    </div>
+    <div class="hint">rolar: zoom · arrastar: mover · duplo clique: enquadrar</div>
+  </div>
+</section>
+
+<!-- 3 · MODELO PROCEDURAL -->
+<section class="slide" id="s3" data-name="Modelo procedural">
+  <div class="copy" style="gap:14px;padding-top:48px">
+    <div class="eyebrow">Modelo 1 · procedural</div>
+    <h2 style="font-size:50px">O bloco de pele por dentro</h2>
+    <div class="chips" role="group" aria-label="Modo">
+      <button class="chip" id="mCut" aria-pressed="true">Corte aberto</button>
+      <button class="chip" id="mLabels" aria-pressed="false">Mostrar nomes</button>
+      <button class="chip" id="mQuiz" aria-pressed="false">Modo pergunta</button>
+    </div>
+    <div class="ctrl-row"><label for="explode">Afastar camadas <output id="explodeOut">0%</output></label><input type="range" id="explode" min="0" max="100" value="0"></div>
+    <div class="caption" id="structCap"><b>Clique numa estrutura</b>No modelo ou na lista. O olho esconde a estrutura para ver o que está atrás.</div>
+    <div class="structs" id="structList"></div>
+  </div>
+  <div class="bench">
+    <div class="stage3d" id="proc3d"></div><div class="hot-layer" id="procHot"></div>
+    <div class="loading" id="procLoading">carregando modelo 3D…</div>
+    <div class="hint">arrastar: girar · rolar: zoom · botão direito: mover<br>duplo clique: vista inicial</div>
+  </div>
+</section>
+
+<!-- 4 · MODELO IA -->
+<section class="slide" id="s4" data-name="Modelo por IA">
+  <div class="copy">
+    <div class="eyebrow">Modelo 2 · gerado por IA</div>
+    <h2>Da ilustração ao volume</h2>
+    <p class="lead">A IA gerou uma <strong>ilustração</strong> de um bloco de pele fina e depois converteu essa imagem num <strong>modelo 3D</strong> (Tripo H3.1, pela Higgsfield).</p>
+    <p class="note">Em geral, o resultado é uma malha única com textura pintada: boa para girar e mostrar, mas sem partes separadas. Não dá para clicar no folículo nem esconder a derme, e a anatomia precisa ser conferida por quem ensina.</p>
+    <p class="note" id="aiInfo">Arraste o arquivo .glb gerado para a bancada ao lado ou clique em “Abrir arquivo”. Também funciona com qualquer outro GLB.</p>
+    <div class="chips"><button class="chip" id="aiSpin" aria-pressed="true">Girar sozinho</button></div>
+  </div>
+  <div class="bench">
+    <div class="stage3d" id="ai3d"></div>
+    <div class="drop" id="aiDrop">
+      <div>
+        <h3>Solte o GLB aqui</h3>
+        <p>O arquivo gerado pela IA fica no seu histórico da Higgsfield. Baixe o .glb e arraste para cá. Ele abre só no seu navegador; nada é enviado.</p>
+        <label class="btn primary">Abrir arquivo<input type="file" id="aiFile" accept=".glb,.gltf,model/gltf-binary" hidden></label>
+      </div>
+    </div>
+    <div class="hint" id="aiHint" hidden>arrastar: girar · rolar: zoom</div>
+  </div>
+</section>
+
+<!-- 5 · COMPARAÇÃO -->
+<section class="slide" id="s5" data-name="Comparação">
+  <div class="copy">
+    <div class="eyebrow">Qual caminho usar</div>
+    <h2>Procedural × IA</h2>
+    <p class="lead">Os dois geram um GLB, o mesmo formato do coração anatômico. A diferença está no que dá para <strong>fazer</strong> com o arquivo depois.</p>
+    <p class="note">Para aula interativa, o procedural ganha: cada estrutura tem nome, descrição e marcador gravados no próprio GLB. A IA serve bem para capa, vitrine e rascunho visual.</p>
+  </div>
+  <div class="bench">
+    <div class="cmp">
+      <table class="grid">
+        <thead><tr><th>Critério</th><th>Procedural (código)</th><th>Gerado por IA</th></tr></thead>
+        <tbody>
+          <tr><td>Partes separadas</td><td><span class="tag ok">sim</span>12 estruturas nomeadas, clicáveis</td><td><span class="tag crit">não</span>uma malha única</td></tr>
+          <tr><td>Fidelidade anatômica</td><td><span class="tag ok">alta</span>camadas e proporções definidas por quem modela</td><td><span class="tag warn">variável</span>a IA pode inventar ou fundir estruturas</td></tr>
+          <tr><td>Visual</td><td><span class="tag warn">esquemático</span>texturas tipo H&amp;E geradas por código</td><td><span class="tag ok">rico</span>em geral, textura “pintada” com aspecto de maquete</td></tr>
+          <tr><td>Ajuste</td><td><span class="tag ok">fácil</span>muda um número e gera de novo</td><td><span class="tag warn">refazer</span>nova imagem, nova geração</td></tr>
+          <tr><td>Custo e tempo</td><td>horas de modelagem na primeira vez; depois, segundos</td><td>minutos e poucos créditos por tentativa</td></tr>
+          <tr><td>Integração</td><td>three.js, Unity, Blender, AR (GLB e USDZ)</td><td>os mesmos formatos, mas sem interação por parte</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- 6 · REVISÃO -->
+<section class="slide" id="s6" data-name="Revisão">
+  <div class="copy">
+    <div class="eyebrow">Revisão</div>
+    <h2>Pergunte à turma</h2>
+    <p class="lead">Leia a pergunta, espere as respostas e clique no cartão para revelar.</p>
+    <p class="credit" style="margin-top:auto">Lâmina: material do professor. Modelo procedural: construído para esta aula com three.js; proporções e cores são didáticas. Modelo por IA: ilustração e malha geradas na Higgsfield (GPT Image e Tripo H3.1).</p>
+  </div>
+  <div class="bench"><div class="quiz" id="quiz"></div></div>
+</section>
+
+<nav id="nav" aria-label="Navegação dos slides">
+  <span class="title">Pele fina em 3D</span>
+  <button class="iconbtn" id="prev" aria-label="Slide anterior"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 6l-6 6 6 6"/></svg></button>
+  <div id="ticks"></div>
+  <button class="iconbtn" id="next" aria-label="Próximo slide"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></button>
+  <span id="counter">01 / 06</span>
+  <button class="iconbtn" id="themeBtn" aria-label="Alternar tema claro/escuro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v3M12 20v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M1 12h3M20 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg></button>
+  <button class="iconbtn" id="fsBtn" aria-label="Tela cheia"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+</nav>
+</div>
+</div>
+
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"}}
+</script>
+
+<!-- ============ deck, navegação, tema ============ -->
+<script>
+(function(){
+const deck=document.getElementById('deck'),slides=[...document.querySelectorAll('.slide')],ticks=document.getElementById('ticks');
+window.DECK={index:0,scale:1,listeners:[],onChange(f){this.listeners.push(f)}};
+slides.forEach((s,i)=>{const b=document.createElement('button');b.title=(i+1)+'. '+s.dataset.name;b.setAttribute('aria-label',b.title);b.onclick=()=>go(i);ticks.appendChild(b)});
+function fit(){const vp=document.getElementById('viewport');const s=Math.min(vp.clientWidth/1600,vp.clientHeight/900);DECK.scale=s;deck.style.transform=`translate(-50%,-50%) scale(${s})`;DECK.listeners.forEach(f=>f('scale'))}
+window.addEventListener('resize',fit);fit();
+function go(i){i=Math.max(0,Math.min(slides.length-1,i));DECK.index=i;
+  slides.forEach((s,k)=>s.classList.toggle('active',k===i));
+  [...ticks.children].forEach((b,k)=>{b.classList.toggle('on',k===i);b.classList.toggle('done',k<i)});
+  document.getElementById('counter').textContent=String(i+1).padStart(2,'0')+' / '+String(slides.length).padStart(2,'0');
+  try{history.replaceState(null,'','#s'+(i+1))}catch(e){}
+  DECK.listeners.forEach(f=>f('slide'))}
+DECK.go=go;
+document.getElementById('prev').onclick=()=>go(DECK.index-1);
+document.getElementById('next').onclick=()=>go(DECK.index+1);
+document.addEventListener('keydown',e=>{
+  const t=e.target,tag=(t.tagName||'').toLowerCase();
+  if(tag==='input'&&(t.type==='text'||t.type==='range'&&/Arrow/.test(e.key)))return;
+  if(e.key==='ArrowRight'||e.key==='PageDown'||(e.key===' '&&tag!=='button')){e.preventDefault();go(DECK.index+1)}
+  else if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();go(DECK.index-1)}
+  else if(e.key==='Home')go(0);else if(e.key==='End')go(slides.length-1);
+  else if(e.key==='f'||e.key==='F')toggleFS();
+});
+function toggleFS(){try{if(document.fullscreenElement)document.exitFullscreen();else document.documentElement.requestFullscreen().catch(()=>{})}catch(e){}}
+document.getElementById('fsBtn').onclick=toggleFS;
+document.getElementById('themeBtn').onclick=()=>{const r=document.documentElement;const cur=r.dataset.theme||(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');r.dataset.theme=cur==='dark'?'light':'dark';DECK.listeners.forEach(f=>f('theme'))};
+const m=/^#s(\d+)$/.exec(location.hash);go(m?(+m[1]-1):0);
+window.cssVar=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+document.querySelectorAll('input[type=range]').forEach(r=>{const f=()=>r.style.setProperty('--p',((r.value-r.min)/(r.max-r.min)*100)+'%');r.addEventListener('input',f);f()});
+})();
+</script>
+
+<!-- ============ slide 2: lâmina com zoom ============ -->
+<script>
+(function(){
+const v=document.getElementById('imgv'),im=v.querySelector('img');let z=1,px=0,py=0,drag=null;
+const apply=()=>im.style.transform=`translate(calc(-50% + ${px}px), calc(-50% + ${py}px)) scale(${z})`;
+const zoom=f=>{z=Math.max(1,Math.min(4,z*f));if(z===1){px=0;py=0}apply()};
+v.addEventListener('wheel',e=>{e.preventDefault();zoom(e.deltaY<0?1.15:1/1.15)},{passive:false});
+v.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY,px,py};v.setPointerCapture(e.pointerId)});
+v.addEventListener('pointermove',e=>{if(!drag)return;const s=DECK.scale||1;px=drag.px+(e.clientX-drag.x)/s;py=drag.py+(e.clientY-drag.y)/s;apply()});
+v.addEventListener('pointerup',()=>drag=null);
+const reset=()=>{z=1;px=0;py=0;apply()};
+v.addEventListener('dblclick',reset);
+document.getElementById('zin').onclick=()=>zoom(1.3);document.getElementById('zout').onclick=()=>zoom(1/1.3);document.getElementById('zreset').onclick=reset;
+apply();
+})();
+</script>
+
+<!-- ============ slide 6: revisão ============ -->
+<script>
+(function(){
+const qs=[
+ ['Por que essa lâmina é de pele fina e não de pele espessa?','Tem folículos pilosos e glândulas sebáceas, e a epiderme é delgada, com estrato córneo fino e sem estrato lúcido. A pele espessa (palmas e plantas) não tem pelos.'],
+ ['Onde as glândulas sebáceas lançam sua secreção?','No folículo piloso, pelo ducto sebáceo. O sebo sai junto com o pelo e lubrifica pelo e superfície da pele.'],
+ ['Que tipo de secreção tem a glândula sebácea?','Holócrina: a célula inteira se desintegra e vira secreção, por isso as células se renovam a partir da camada basal do ácino.'],
+ ['Por que a epiderme aparece roxa e a derme rosa no H&E?','A epiderme é cheia de células e núcleos (hematoxilina, roxo). A derme é rica em colágeno, uma proteína que cora pela eosina (rosa).']
+];
+const q=document.getElementById('quiz');
+qs.forEach(([t,a],i)=>{const b=document.createElement('button');b.className='q';b.innerHTML=`<span class="qn">PERGUNTA ${i+1}</span><span class="qt">${t}</span><span class="qa">${a}</span><span class="qh">clique para revelar a resposta</span>`;b.onclick=()=>b.classList.toggle('open');q.appendChild(b)});
+})();
+</script>
+
+<!-- ============ 3D: capa, modelo procedural, modelo IA ============ -->
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+const views=[];
+function makeView(host,{fov=30,target=[0,-0.85,0],pos=[3.6,2.4,6.4],slide}={}){
+  const r=new THREE.WebGLRenderer({antialias:true,alpha:true});
+  r.toneMapping=THREE.ACESFilmicToneMapping;r.toneMappingExposure=0.85;r.outputColorSpace=THREE.SRGBColorSpace;
+  host.appendChild(r.domElement);
+  const scene=new THREE.Scene();
+  scene.environment=new THREE.PMREMGenerator(r).fromScene(new RoomEnvironment(),0.04).texture;
+  scene.environmentIntensity=0.5;
+  const sun=new THREE.DirectionalLight('#ffffff',1.5);sun.position.set(2,4,3);scene.add(sun);
+  const cam=new THREE.PerspectiveCamera(fov,1,0.01,200);cam.position.set(...pos);
+  const ctl=new OrbitControls(cam,r.domElement);ctl.target.set(...target);ctl.enableDamping=true;ctl.dampingFactor=0.08;ctl.update();
+  const home={pos:cam.position.clone(),target:ctl.target.clone()};
+  const v={r,scene,cam,ctl,host,slide,home,onFrame:null,
+    reset(){cam.position.copy(home.pos);ctl.target.copy(home.target);ctl.update()},
+    setHome(p,t){home.pos.copy(p);home.target.copy(t);this.reset()}};
+  r.domElement.addEventListener('dblclick',()=>v.reset());
+  const size=()=>{const w=host.clientWidth,h=host.clientHeight;if(!w||!h)return;r.setPixelRatio(Math.min(2,devicePixelRatio*(DECK.scale||1)));r.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix()};
+  new ResizeObserver(size).observe(host);DECK.onChange(k=>{if(k==='scale')size()});size();
+  views.push(v);return v;
+}
+function loop(){requestAnimationFrame(loop);
+  for(const v of views){if(v.slide!==DECK.index)continue;v.ctl.update();v.onFrame&&v.onFrame();v.r.render(v.scene,v.cam)}}
+requestAnimationFrame(loop);
+
+async function loadB64(url){
+  const t=await fetch(url).then(r=>{if(!r.ok)throw new Error(r.status);return r.text()});
+  const b=atob(t.trim()),u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);
+  return new GLTFLoader().parseAsync(u.buffer,'');
+}
+
+// ---------- modelo procedural ----------
+const gltf=await loadB64('models/pele_fina_procedural.txt').catch(e=>{document.getElementById('procLoading').textContent='não foi possível carregar o modelo';throw e});
+document.getElementById('coverLoading').remove();document.getElementById('procLoading').remove();
+
+// capa: cópia girando sozinha, com o corte aberto
+const cover=makeView(document.getElementById('cover3d'),{slide:0,pos:[4.2,2.0,6.6]});
+const coverRoot=gltf.scene.clone(true);
+coverRoot.traverse(o=>{if(o.userData.metade==='anterior')o.visible=false});
+cover.scene.add(coverRoot);cover.ctl.autoRotate=true;cover.ctl.autoRotateSpeed=0.9;cover.ctl.enableZoom=false;
+
+// slide 3
+const V3=makeView(document.getElementById('proc3d'),{slide:2,pos:[2.6,1.6,7.4]});
+const root=gltf.scene;V3.scene.add(root);
+// o GLTFLoader troca espaços por "_" em .name e guarda o nome original em userData.name
+const nm=o=>o.userData.name||o.name;
+const skin=root.children.find(o=>nm(o)==='Pele fina')||root;
+const groups=skin.children.filter(g=>g.userData&&g.userData.info);
+const lift={'Estrato córneo':3,'Epiderme':2,'Derme papilar':1,'Derme reticular':0,'Hipoderme':-1.2};
+groups.forEach(g=>{g.label=nm(g);g.userData.baseY=g.position.y;g.traverse(o=>{if(o.isMesh){o.userData.group=g;o.material=o.material.clone();o.userData.baseEm=o.material.emissive.clone()}})});
+
+const list=document.getElementById('structList'),cap=document.getElementById('structCap'),hotLayer=document.getElementById('procHot');
+const eyeOn='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+const eyeOff='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3l18 18M10.6 5.1A11 11 0 0 1 12 5c7 0 11 7 11 7a18 18 0 0 1-3.2 4M6.6 6.6C3.2 8.6 1 12 1 12s4 7 11 7a10.6 10.6 0 0 0 5.4-1.6"/></svg>';
+let selected=null,quiz=false;
+const items=groups.map((g,i)=>{
+  const row=document.createElement('div');row.className='row';
+  row.innerHTML=`<button class="n" aria-label="Selecionar ${g.label}">${String(i+1).padStart(2,'0')}</button><button class="nm">${g.label}</button><button class="eye" aria-label="Mostrar ou esconder ${g.label}" aria-pressed="true">${eyeOn}</button>`;
+  row.querySelector('.n').onclick=row.querySelector('.nm').onclick=()=>select(g,true);
+  const eye=row.querySelector('.eye');
+  eye.onclick=()=>{g.visible=!g.visible;eye.innerHTML=g.visible?eyeOn:eyeOff;eye.setAttribute('aria-pressed',g.visible);row.classList.toggle('off',!g.visible)};
+  list.appendChild(row);
+  let hot=null;
+  if(g.userData.marcador){hot=document.createElement('div');hot.className='hot';hot.innerHTML=`<span class="dot">${i+1}</span><span class="lbl">${g.label}</span>`;
+    hot.onclick=()=>{if(quiz)hot.classList.add('reveal');select(g,false)};hotLayer.appendChild(hot)}
+  return {g,row,hot,p:g.userData.marcador?new THREE.Vector3(...g.userData.marcador):null};
+});
+function select(g,fly){
+  selected=g;
+  items.forEach(it=>{const on=it.g===g;it.row.classList.toggle('sel',on);it.hot&&it.hot.classList.toggle('sel',on);
+    it.g.traverse(o=>{if(o.isMesh){o.material.emissive.copy(on?new THREE.Color(cssVar('--accent')):o.userData.baseEm);o.material.emissiveIntensity=on?0.35:1}})});
+  const show=!quiz||items.find(it=>it.g===g).hot?.classList.contains('reveal')||fly;
+  cap.innerHTML=`<b>${show?g.label:'Estrutura '+(groups.indexOf(g)+1)}</b>${show?g.userData.info:'Qual é o nome desta estrutura? Pergunte à turma e clique no número para revelar.'}`;
+  if(fly){const it=items.find(it=>it.g===g);if(it.p){const to=it.p.clone();const dir=V3.cam.position.clone().sub(V3.ctl.target);V3.ctl.target.lerp(to,.6);V3.cam.position.copy(V3.ctl.target.clone().add(dir))}}
+}
+// clique no modelo
+const ray=new THREE.Raycaster(),ndc=new THREE.Vector2();let down=null;
+V3.r.domElement.addEventListener('pointerdown',e=>down=[e.clientX,e.clientY]);
+V3.r.domElement.addEventListener('pointerup',e=>{
+  if(!down||Math.hypot(e.clientX-down[0],e.clientY-down[1])>4)return;
+  const b=V3.r.domElement.getBoundingClientRect();ndc.set((e.clientX-b.left)/b.width*2-1,-(e.clientY-b.top)/b.height*2+1);
+  ray.setFromCamera(ndc,V3.cam);const hit=ray.intersectObject(skin,true).find(h=>isVisible(h.object));
+  if(hit&&hit.object.userData.group)select(hit.object.userData.group,false);
+});
+function isVisible(o){while(o){if(!o.visible)return false;o=o.parent}return true}
+
+// modos
+const bCut=document.getElementById('mCut'),bLab=document.getElementById('mLabels'),bQuiz=document.getElementById('mQuiz');
+function setCut(on){bCut.setAttribute('aria-pressed',on);skin.traverse(o=>{if(o.userData.metade==='anterior')o.visible=!on})}
+bCut.onclick=()=>setCut(bCut.getAttribute('aria-pressed')!=='true');setCut(true);
+bLab.onclick=()=>{const on=bLab.getAttribute('aria-pressed')!=='true';bLab.setAttribute('aria-pressed',on);items.forEach(it=>it.hot&&it.hot.classList.toggle('show',on))};
+bQuiz.onclick=()=>{quiz=bQuiz.getAttribute('aria-pressed')!=='true';bQuiz.setAttribute('aria-pressed',quiz);hotLayer.classList.toggle('quiz-mode',quiz);
+  items.forEach(it=>it.hot&&it.hot.classList.remove('reveal'));list.style.visibility=quiz?'hidden':'visible';if(quiz&&bLab.getAttribute('aria-pressed')==='true')bLab.click()};
+const ex=document.getElementById('explode');
+ex.addEventListener('input',()=>{const k=ex.value/100;document.getElementById('explodeOut').textContent=ex.value+'%';
+  groups.forEach(g=>{if(g.label in lift)g.position.y=g.userData.baseY+lift[g.label]*0.38*k})});
+
+// marcadores projetados + ocultação por raio (a cada 4 quadros)
+let frame=0;const tmp=new THREE.Vector3();
+V3.onFrame=()=>{
+  const w=V3.host.clientWidth,h=V3.host.clientHeight,check=(frame++%4)===0;
+  items.forEach(it=>{if(!it.hot||!it.p)return;
+    const p=it.p.clone();if(it.g.label in lift)p.y+=it.g.position.y-it.g.userData.baseY;
+    tmp.copy(p).project(V3.cam);
+    const off=tmp.z>1||!it.g.visible;
+    it.hot.style.transform=`translate(${(tmp.x*.5+.5)*w-13}px,${(-tmp.y*.5+.5)*h-13}px)`;
+    if(check&&!off){const dir=p.clone().sub(V3.cam.position);const d=dir.length();ray.set(V3.cam.position,dir.normalize());
+      const hit=ray.intersectObject(skin,true).find(x=>isVisible(x.object)&&!x.object.material.transparent);
+      it.occ=hit&&hit.distance<d-0.06&&hit.object.userData.group!==it.g}
+    it.hot.classList.toggle('hidden',off||!!it.occ)});
+};
+DECK.onChange(k=>{if(k==='theme'&&selected)select(selected,false)});
+
+// ---------- modelo IA (arquivo solto pelo apresentador ou models/pele_fina_ia.txt) ----------
+const AI=makeView(document.getElementById('ai3d'),{slide:3,target:[0,0,0],pos:[0,1,4]});
+AI.ctl.autoRotate=true;AI.ctl.autoRotateSpeed=0.8;
+const drop=document.getElementById('aiDrop');
+function showAI(g,label){
+  AI.scene.clear();AI.scene.add(new THREE.DirectionalLight('#fff',1.5).translateX(2).translateY(4).translateZ(3));
+  const m=g.scene;const box=new THREE.Box3().setFromObject(m),c=box.getCenter(new THREE.Vector3()),s=box.getSize(new THREE.Vector3()).length();
+  m.position.sub(c);AI.scene.add(m);
+  AI.setHome(new THREE.Vector3(s*.55,s*.35,s*.95),new THREE.Vector3());
+  drop.hidden=true;document.getElementById('aiHint').hidden=false;
+  let meshes=0,tris=0;m.traverse(o=>{if(o.isMesh){meshes++;tris+=(o.geometry.index?o.geometry.index.count:o.geometry.attributes.position.count)/3}});
+  document.getElementById('aiInfo').innerHTML=`<b>${label}</b>: ${meshes} malha${meshes>1?'s':''}, ${Math.round(tris/1000)} mil triângulos.`;
+}
+async function openFile(f){const buf=await f.arrayBuffer();showAI(await new GLTFLoader().parseAsync(buf,''),f.name)}
+document.getElementById('aiFile').onchange=e=>e.target.files[0]&&openFile(e.target.files[0]);
+const bench=drop.parentElement;
+bench.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('over')});
+bench.addEventListener('dragleave',()=>drop.classList.remove('over'));
+bench.addEventListener('drop',e=>{e.preventDefault();drop.classList.remove('over');const f=e.dataTransfer.files[0];f&&openFile(f)});
+const bSpin=document.getElementById('aiSpin');bSpin.onclick=()=>{AI.ctl.autoRotate=!AI.ctl.autoRotate;bSpin.setAttribute('aria-pressed',AI.ctl.autoRotate)};
+loadB64('models/pele_fina_ia.txt').then(g=>showAI(g,'Modelo gerado por IA')).catch(()=>{});
+
+window.__lab={select:name=>select(groups.find(g=>g.label===name),false),groups:()=>groups.map(g=>g.label),V3};
+</script>
+</body>
+</html>

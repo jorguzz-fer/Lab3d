@@ -1,0 +1,4 @@
+node_modules/
+.DS_Store
+models/*.usdz
+web/models/*.txt
