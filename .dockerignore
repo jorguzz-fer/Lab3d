@@ -1,0 +1,7 @@
+node_modules
+.git
+docs
+tools
+src
+web/models/*.txt
+models/*.usdz

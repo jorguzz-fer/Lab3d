@@ -103,6 +103,10 @@ Os GLB originais tinham cerca de 22 MB cada. As texturas foram reduzidas para 20
 python3 tools/compress_glb.py original.glb models/pele_fina_ia_a.glb --max 2048
 ```
 
+## Publicação
+
+O site vai para **https://lab.tudomudou.com.br** pelo Coolify (Dockerfile + nginx). O passo a passo está em [docs/DEPLOY.md](docs/DEPLOY.md).
+
 ## Observações
 
 - Proporções e cores são didáticas. Um professor de histologia deve conferir nomes e posições.
